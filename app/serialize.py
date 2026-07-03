@@ -163,6 +163,61 @@ def full_life(year: int, month: int, day: int, hour: int, minute: int, sex: str)
 # 上游 docs/*.md（局數史例/災異統計/古籍書目/看盤要領/教程/更新日誌）
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# 流卦運多期时间轴：直接调用上游 apps/hex_timeline.py 的时步生成与推卦函数
+# （上游作者不可联系，故 pin 其源码直调——与 pan 同理，零移植零漂移）
+# ---------------------------------------------------------------------------
+
+_LIU_SCALES = [("流年", "year"), ("流月", "month"), ("流日", "day"),
+               ("流時", "hour"), ("流分", "minute")]
+
+
+def _apps_dir() -> Path | None:
+    env = os.environ.get("KINTAIYI_APPS")
+    if env and Path(env).is_dir():
+        return Path(env)
+    cand = Path(kt.__file__).resolve().parents[2] / "apps"
+    return cand if cand.is_dir() else None
+
+
+def _hex_timeline():
+    import sys
+    d = _apps_dir()
+    if d is None:
+        raise RuntimeError("上游 apps 目录不可用（hex_timeline 需 vendor 克隆）")
+    if str(d) not in sys.path:
+        sys.path.insert(0, str(d))
+    import hex_timeline  # noqa: PLC0415
+    return hex_timeline
+
+
+@lru_cache(maxsize=64)
+def liu_timelines(year: int, month: int, day: int, hour: int, minute: int) -> dict:
+    """五计式流卦運多期序列（年12期/月12期/日15期/時12辰/分10期）。
+
+    逐期直调上游 _compute_gua/_compute_yao（= Taiyi(时刻).year_gua/... 命法卦链），
+    时步生成（2/29 回退、时辰跨日等）也用上游 _generate_time_steps 原逻辑。
+    """
+    ht = _hex_timeline()
+    ty = kt.Taiyi(year, month, day, hour, minute)
+    out: dict = {}
+    for label, scale in _LIU_SCALES:
+        rows = []
+        for s in ht._generate_time_steps(ty, scale):
+            name, symbol, num = ht._compute_gua(
+                s["year"], s["month"], s["day"], s["hour"], s["minute"], scale)
+            yao = ht._compute_yao(
+                s["year"], s["month"], s["day"], s["hour"], s["minute"], scale)
+            rows.append({
+                "label": s["label"], "sub": s.get("sub_label", ""),
+                "時刻": [s["year"], s["month"], s["day"], s["hour"], s["minute"]],
+                "卦": name, "卦符": symbol, "卦數": num,
+                "爻": yao, "爻名": ht._get_yao_name(name, yao),
+            })
+        out[label] = rows
+    return _jsonable(out)
+
+
 DOCS_WHITELIST = {"example", "disaster", "guji", "instruction", "tutorial", "update"}
 
 

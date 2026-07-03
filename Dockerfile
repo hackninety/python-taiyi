@@ -22,7 +22,8 @@ RUN pip install --no-cache-dir -r requirements.txt \
  && pip install --no-cache-dir /srv/vendor/kintaiyi
 
 ENV KINTAIYI_REF=${KINTAIYI_REF} \
-    KINTAIYI_DOCS=/srv/vendor/kintaiyi/docs
+    KINTAIYI_DOCS=/srv/vendor/kintaiyi/docs \
+    KINTAIYI_APPS=/srv/vendor/kintaiyi/apps
 
 COPY app ./app
 

@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 
 from .serialize import (
     serialize_chart, serialize_mingfa, pan_svg, kintaiyi_version,
-    full_pan, full_life, read_doc,
+    full_pan, full_life, read_doc, liu_timelines,
 )
 
 KINTAIYI_REF = os.environ.get("KINTAIYI_REF", "unknown")
@@ -128,6 +128,28 @@ def taiyi_life(req: MingfaReq) -> dict:
             detail={"code": "KINTAIYI_ERROR", "message": f"{type(exc).__name__}: {exc}"},
         ) from exc
     return {"source": "kintaiyi", "ref": KINTAIYI_REF, "life": data}
+
+
+class LiuReq(BaseModel):
+    year: int = Field(ge=600, le=9998)  # 流年往后推 12 年，留 1 年余量
+    month: int = Field(ge=1, le=12)
+    day: int = Field(ge=1, le=31)
+    hour: int = Field(ge=0, le=23)
+    minute: int = Field(ge=0, le=59)
+
+
+@app.post("/api/taiyi/liu")
+def taiyi_liu(req: LiuReq) -> dict:
+    """流卦運多期时间轴（流年12/流月12/流日15/流時12辰/流分10），
+    逐期直调上游 apps/hex_timeline 推法（命法卦链 + 干支序动爻）。"""
+    try:
+        data = liu_timelines(req.year, req.month, req.day, req.hour, req.minute)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "KINTAIYI_ERROR", "message": f"{type(exc).__name__}: {exc}"},
+        ) from exc
+    return {"source": "kintaiyi", "ref": KINTAIYI_REF, "liu": data}
 
 
 @app.get("/api/docs/{name}")

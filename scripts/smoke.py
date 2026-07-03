@@ -48,6 +48,23 @@ for name in ("example", "disaster", "guji", "instruction", "tutorial", "update")
     assert md and len(md) > 100, f"doc {name} 读取失败"
 print("docs ok: example/disaster/guji/instruction/tutorial/update")
 
+# 流卦運：结构 + 与 kintaiyi 命法卦链同刻互证（首期即起局时刻本身）
+from app.serialize import liu_timelines  # noqa: E402
+from kintaiyi import kintaiyi as _kt     # noqa: E402
+
+liu = liu_timelines(2026, 7, 3, 14, 30)
+json.dumps(liu, ensure_ascii=False)
+expect_len = {"流年": 12, "流月": 12, "流日": 15, "流時": 12, "流分": 10}
+for k, n in expect_len.items():
+    assert len(liu[k]) == n, f"{k} 期数 {len(liu[k])} != {n}"
+    assert all(r["卦"] and r["爻名"] for r in liu[k]), f"{k} 有空卦/爻"
+_ty = _kt.Taiyi(2026, 7, 3, 14, 30)
+for k, fn in (("流年", _ty.year_gua), ("流日", _ty.day_gua), ("流分", _ty.minute_gua)):
+    num, gua_str = fn()
+    assert liu[k][0]["卦數"] == num, f"{k} 首期卦數 {liu[k][0]['卦數']} != 命法卦链 {num}"
+print("liu ok:", {k: len(v) for k, v in liu.items()},
+      "| 流年首期:", liu["流年"][0]["卦"], liu["流年"][0]["爻名"])
+
 # 可选：对照 react-taiyi 黄金用例
 if len(sys.argv) > 1 and os.path.isfile(sys.argv[1]):
     with open(sys.argv[1], encoding="utf-8") as f:
