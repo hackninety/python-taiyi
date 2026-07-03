@@ -14,7 +14,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
-from .serialize import serialize_chart, serialize_mingfa, pan_svg, kintaiyi_version
+from .serialize import (
+    serialize_chart, serialize_mingfa, pan_svg, kintaiyi_version,
+    full_pan, full_life, read_doc,
+)
 
 KINTAIYI_REF = os.environ.get("KINTAIYI_REF", "unknown")
 
@@ -90,6 +93,52 @@ def mingfa(req: MingfaReq) -> dict:
             detail={"code": "KINTAIYI_ERROR", "message": f"{type(exc).__name__}: {exc}"},
         ) from exc
     return {"source": "kintaiyi", "ref": KINTAIYI_REF, "mingfa": data}
+
+
+class PanReq(ChartReq):
+    """全解释盘请求；game=True 附运筹博弈分析（Nash 均衡）"""
+    game: bool = False
+
+
+@app.post("/api/taiyi/pan")
+def taiyi_pan(req: PanReq) -> dict:
+    """kintaiyi 全解释盘（t.pan）：值宿断事、断法解释、明所主术、釋格局全文、
+    《太乙統宗寶鑑》卷三/五/六/八/九/十/十一/十二(統運)/十三(卦象)/十四/十五/十七/十八、
+    军事三卷、金函玉鏡、九星贵神、五運六氣等全量输出（中文键与上游一致）。"""
+    try:
+        data = full_pan(req.year, req.month, req.day, req.hour, req.minute,
+                        req.ji, req.acum, req.game)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "KINTAIYI_ERROR", "message": f"{type(exc).__name__}: {exc}"},
+        ) from exc
+    return {"source": "kintaiyi", "ref": KINTAIYI_REF, "pan": data}
+
+
+@app.post("/api/taiyi/life")
+def taiyi_life(req: MingfaReq) -> dict:
+    """kintaiyi 命法全盘（t.taiyi_life）：含卷二十、十提金賦、十二宮星斷、
+    雙星同宮論、諸星上中下三等。"""
+    try:
+        data = full_life(req.year, req.month, req.day, req.hour, req.minute, req.sex)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "KINTAIYI_ERROR", "message": f"{type(exc).__name__}: {exc}"},
+        ) from exc
+    return {"source": "kintaiyi", "ref": KINTAIYI_REF, "life": data}
+
+
+@app.get("/api/docs/{name}")
+def docs(name: str) -> Response:
+    """上游 docs/*.md 原文（example=局數史例 disaster=災異統計 guji=古籍書目
+    instruction=看盤要領步骤 tutorial=教程 update=更新日誌）。"""
+    md = read_doc(name)
+    if md is None:
+        raise HTTPException(status_code=404, detail={"code": "DOC_NOT_FOUND", "message": name})
+    return Response(content=md, media_type="text/markdown; charset=utf-8",
+                    headers={"Cache-Control": "public, max-age=86400"})
 
 
 @app.get("/api/taiyi/pan.svg")

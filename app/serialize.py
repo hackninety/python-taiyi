@@ -5,9 +5,23 @@
 前端以同一套键名与本地 TS 引擎逐字段对照（漂移检测）。
 """
 import datetime as _dt
+import os
+from functools import lru_cache
+from pathlib import Path
 
 from kintaiyi import kintaiyi as kt
 from kintaiyi import config, jieqi
+
+
+def _jsonable(o):
+    """pan()/taiyi_life() 输出 JSON 安全化：中文键原样、tuple→list、其余不可序列化对象→str。"""
+    if isinstance(o, dict):
+        return {str(k): _jsonable(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple, set)):
+        return [_jsonable(x) for x in o]
+    if o is None or isinstance(o, (str, int, float, bool)):
+        return o
+    return str(o)
 
 
 def kintaiyi_version() -> str:
@@ -123,3 +137,51 @@ def pan_svg(year: int, month: int, day: int, hour: int, minute: int,
     drawing = t.gen_gong(ji, acum, tenching)
     # 上游部分计式分支直接返回 SVG 字符串，其余返回 drawsvg Drawing
     return drawing if isinstance(drawing, str) else drawing.as_svg()
+
+
+# ---------------------------------------------------------------------------
+# 全解释盘 pan() / 命法盘 taiyi_life()：直接透传上游综合输出（含《太乙統宗寶鑑》诸卷）
+# pan() 内部重复计算较多，按参数 LRU 缓存
+# ---------------------------------------------------------------------------
+
+@lru_cache(maxsize=64)
+def full_pan(year: int, month: int, day: int, hour: int, minute: int,
+             ji: int, acum: int, game: bool) -> dict:
+    """t.pan()：值宿断事/断法解释/明所主术/釋格局/卷三五六八九十…十八/军事/統運/卦象等全量输出。"""
+    t = kt.Taiyi(year, month, day, hour, minute)
+    return _jsonable(t.pan(ji, acum, enable_game_theory=game))
+
+
+@lru_cache(maxsize=32)
+def full_life(year: int, month: int, day: int, hour: int, minute: int, sex: str) -> dict:
+    """t.taiyi_life()：命法全盘（含卷二十、十提金賦、十二宮星斷、雙星同宮論、諸星三等）。"""
+    t = kt.Taiyi(year, month, day, hour, minute)
+    return _jsonable(t.taiyi_life(sex))
+
+
+# ---------------------------------------------------------------------------
+# 上游 docs/*.md（局數史例/災異統計/古籍書目/看盤要領/教程/更新日誌）
+# ---------------------------------------------------------------------------
+
+DOCS_WHITELIST = {"example", "disaster", "guji", "instruction", "tutorial", "update"}
+
+
+def _docs_dir() -> Path | None:
+    env = os.environ.get("KINTAIYI_DOCS")
+    if env and Path(env).is_dir():
+        return Path(env)
+    # src 布局：src/kintaiyi/kintaiyi.py → 仓库根 /docs（本地 PYTHONPATH 与 docker vendor 克隆均适用）
+    cand = Path(kt.__file__).resolve().parents[2] / "docs"
+    return cand if cand.is_dir() else None
+
+
+def read_doc(name: str) -> str | None:
+    if name not in DOCS_WHITELIST:
+        return None
+    d = _docs_dir()
+    if d is None:
+        return None
+    p = d / f"{name}.md"
+    if not p.is_file():
+        return None
+    return p.read_text(encoding="utf-8")

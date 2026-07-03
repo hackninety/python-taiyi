@@ -1,2 +1,4 @@
 fastapi>=0.115
 uvicorn[standard]>=0.30
+# kintaiyi 运筹博弈（game_theory）懒加载依赖，上游 pyproject 未声明
+numpy>=1.26

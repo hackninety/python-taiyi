@@ -15,10 +15,14 @@ RUN apt-get update \
 WORKDIR /srv
 
 COPY requirements.txt .
+# 克隆到 vendor 后本地安装：docs/*.md（局數史例/災異統計/古籍書目等）需随包提供
 RUN pip install --no-cache-dir -r requirements.txt \
- && pip install --no-cache-dir "kintaiyi @ git+https://github.com/kentang2017/kintaiyi@${KINTAIYI_REF}"
+ && git clone https://github.com/kentang2017/kintaiyi /srv/vendor/kintaiyi \
+ && git -C /srv/vendor/kintaiyi checkout ${KINTAIYI_REF} \
+ && pip install --no-cache-dir /srv/vendor/kintaiyi
 
-ENV KINTAIYI_REF=${KINTAIYI_REF}
+ENV KINTAIYI_REF=${KINTAIYI_REF} \
+    KINTAIYI_DOCS=/srv/vendor/kintaiyi/docs
 
 COPY app ./app
 
