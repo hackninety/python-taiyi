@@ -1,0 +1,14 @@
+services:
+  taiyi-api:
+    build:
+      context: .
+      # 升级上游 kintaiyi：改这里的 SHA 后 `docker compose up -d --build`
+      args:
+        KINTAIYI_REF: "695087889532f0f91d84185d8534df0474617376"
+    image: python-taiyi:latest
+    container_name: python-taiyi
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8018:8000"   # 仅本机监听，经 Nginx/CF 反代对外
+    environment:
+      - TZ=Asia/Shanghai
