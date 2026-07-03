@@ -37,7 +37,8 @@ app.add_middleware(
 
 
 class ChartReq(BaseModel):
-    year: int = Field(ge=600, le=9999, description="公历年（kintaiyi/sxtwl 验证范围）")
+    # sxtwl 古历实测支持至公元前约 6000 年（负数=公元前 N 年直记，无 0 年）；异常仍兜 422
+    year: int = Field(ge=-6000, le=9999, description="公历年（负数=公元前 N 年，kintaiyi/sxtwl 约定）")
     month: int = Field(ge=1, le=12)
     day: int = Field(ge=1, le=31)
     hour: int = Field(ge=0, le=23)
@@ -131,7 +132,7 @@ def taiyi_life(req: MingfaReq) -> dict:
 
 
 class LiuReq(BaseModel):
-    year: int = Field(ge=600, le=9998)  # 流年往后推 12 年，留 1 年余量
+    year: int = Field(ge=-6000, le=9998)  # 流年往后推 12 年，留 1 年余量；负数=公元前直记
     month: int = Field(ge=1, le=12)
     day: int = Field(ge=1, le=31)
     hour: int = Field(ge=0, le=23)
@@ -165,7 +166,7 @@ def docs(name: str) -> Response:
 
 @app.get("/api/taiyi/pan.svg")
 def pan(
-    year: int = Query(ge=600, le=9999),
+    year: int = Query(ge=-6000, le=9999),
     month: int = Query(ge=1, le=12),
     day: int = Query(ge=1, le=31),
     hour: int = Query(ge=0, le=23),
