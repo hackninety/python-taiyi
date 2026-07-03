@@ -132,7 +132,8 @@ def taiyi_life(req: MingfaReq) -> dict:
 
 
 class LiuReq(BaseModel):
-    year: int = Field(ge=-6000, le=9998)  # 流年往后推 12 年，留 1 年余量；负数=公元前直记
+    # 上游 hex_timeline 时步用 Python datetime（MINYEAR=1），流卦運不支持公元前
+    year: int = Field(ge=1, le=9998)  # 流年往后推 12 年，留 1 年余量
     month: int = Field(ge=1, le=12)
     day: int = Field(ge=1, le=31)
     hour: int = Field(ge=0, le=23)
