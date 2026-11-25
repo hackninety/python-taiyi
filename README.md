@@ -14,7 +14,7 @@
 | `GET /api/health` | 健康检查（含 kintaiyi 版本与 pin 的 commit） |
 | `GET /api/version` | 版本信息 |
 
-已知上游边界组合（如「日计×太乙局」浮点下标崩溃）返回 `422 {code:"KINTAIYI_ERROR"}`，前端据此回退本地引擎。
+日计×太乙局在固定版本 `6950878` 会给列表传入整值浮点下标。图盘封装保留原积数公式，传给下游前将这个组合的整值转换为整数。`/api/version` 的 `adapter_fixes` 列出 `integer-day-accumulator` 表示实例已应用该修正。其他上游计算异常保留 HTTP 422 与具体错误详情。
 
 ## 与上游同步
 

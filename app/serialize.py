@@ -12,6 +12,18 @@ from pathlib import Path
 from kintaiyi import kintaiyi as kt
 from kintaiyi import config, jieqi
 
+DAY_ACCUMULATOR_FIX = "integer-day-accumulator"
+
+
+class ChartTaiyi(kt.Taiyi):
+    """保留上游积数公式，将日计太乙局 round(x, 0) 的整值恢复为整数下标。"""
+
+    def accnum(self, ji_style, taiyi_acumyear):
+        value = super().accnum(ji_style, taiyi_acumyear)
+        if ji_style == 2 and taiyi_acumyear == 3 and isinstance(value, float) and value.is_integer():
+            return int(value)
+        return value
+
 
 def _jsonable(o):
     """pan()/taiyi_life() 输出 JSON 安全化：中文键原样、tuple→list、其余不可序列化对象→str。"""
@@ -35,7 +47,7 @@ def kintaiyi_version() -> str:
 def serialize_chart(year: int, month: int, day: int, hour: int, minute: int,
                     ji: int, acum: int) -> dict:
     """完整盘面（与 gen_fixtures.py 的 case 字段一一对应）。"""
-    t = kt.Taiyi(year, month, day, hour, minute)
+    t = ChartTaiyi(year, month, day, hour, minute)
     acc = t.accnum(ji, acum)
     kook = t.kook(ji, acum)
     acc_key = [k for k in kook if k.startswith("積")][0]
@@ -133,7 +145,7 @@ def serialize_mingfa(year: int, month: int, day: int, hour: int, minute: int,
 def pan_svg(year: int, month: int, day: int, hour: int, minute: int,
             ji: int, acum: int, tenching: int) -> str:
     """kintaiyi 原生圆盘 SVG（drawsvg）。tenching: 0=带十精行星层, 1=不带。"""
-    t = kt.Taiyi(year, month, day, hour, minute)
+    t = ChartTaiyi(year, month, day, hour, minute)
     drawing = t.gen_gong(ji, acum, tenching)
     # 上游部分计式分支直接返回 SVG 字符串，其余返回 drawsvg Drawing
     return drawing if isinstance(drawing, str) else drawing.as_svg()
@@ -148,7 +160,7 @@ def pan_svg(year: int, month: int, day: int, hour: int, minute: int,
 def full_pan(year: int, month: int, day: int, hour: int, minute: int,
              ji: int, acum: int, game: bool) -> dict:
     """t.pan()：值宿断事/断法解释/明所主术/釋格局/卷三五六八九十…十八/军事/統運/卦象等全量输出。"""
-    t = kt.Taiyi(year, month, day, hour, minute)
+    t = ChartTaiyi(year, month, day, hour, minute)
     return _jsonable(t.pan(ji, acum, enable_game_theory=game))
 
 

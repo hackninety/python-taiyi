@@ -15,7 +15,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from .serialize import (
-    serialize_chart, serialize_mingfa, pan_svg, kintaiyi_version,
+    serialize_chart, serialize_mingfa, pan_svg, kintaiyi_version, DAY_ACCUMULATOR_FIX,
     full_pan, full_life, read_doc, liu_timelines,
 )
 
@@ -67,6 +67,7 @@ def version() -> dict:
         "app": "python-taiyi",
         "kintaiyi_version": kintaiyi_version(),
         "kintaiyi_ref": KINTAIYI_REF,
+        "adapter_fixes": [DAY_ACCUMULATOR_FIX],
         "upstream": "https://github.com/kentang2017/kintaiyi",
     }
 
@@ -76,7 +77,7 @@ def taiyi(req: ChartReq) -> dict:
     try:
         chart = serialize_chart(req.year, req.month, req.day, req.hour, req.minute,
                                 req.ji, req.acum)
-    except Exception as exc:  # noqa: BLE001 — 参考实现已知崩溃组合（如日计×太乙局）
+    except Exception as exc:  # noqa: BLE001 — 上游计算异常保留错误类型和信息
         raise HTTPException(
             status_code=422,
             detail={"code": "KINTAIYI_ERROR", "message": f"{type(exc).__name__}: {exc}"},

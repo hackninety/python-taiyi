@@ -10,7 +10,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from app.serialize import serialize_chart, serialize_mingfa, pan_svg  # noqa: E402
+from app.serialize import serialize_chart, serialize_mingfa, pan_svg, full_pan  # noqa: E402
 
 CASE = (2026, 7, 3, 14, 30, 3, 0)  # 时计 × 太乙统宗
 
@@ -18,6 +18,16 @@ chart = serialize_chart(*CASE)
 print("kook:", chart["kook_text"], "| acc:", chart["acc"], "| ty:", chart["ty"],
       "| wc:", chart["wc"], "| sf:", chart["sf"])
 assert chart["kook_num"] and chart["gz"] and chart["doors"], "关键字段缺失"
+
+for when, expected_acc, expected_kook in (
+    ((2026, 6, 15, 10, 30), 585492, 60),
+    ((2024, 2, 4, 16, 27), 584420, 68),
+    ((1900, 1, 1, 0, 0), 539105, 41),
+):
+    daily = serialize_chart(*when, 2, 3)
+    full = full_pan(*when, 2, 3, True)
+    assert type(daily["acc"]) is int and daily["acc"] == expected_acc
+    assert daily["kook_num"] == full["局式"]["數"] == expected_kook
 
 mf = serialize_mingfa(2026, 7, 3, 14, 30, "男")
 print("mingfa life_accum:", mf["life_accum"], "| three_cai:", mf["three_cai"])
